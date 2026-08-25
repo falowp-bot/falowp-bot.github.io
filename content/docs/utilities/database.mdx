@@ -21,12 +21,12 @@ description: 配置 falowp-bot-utils-db，并使用 Exposed 访问单个或多�
 
 ## 添加依赖
 
-下面的依赖以 MariaDB 为例。`falowpVersion` 使用项目统一的版本标记；JDBC 驱动版本由应用单独管理。
+下面的依赖以 MariaDB 为例。将 `${VERSION}` 分别替换为组件和 JDBC 驱动的实际版本号。
 
 ```kotlin
 dependencies {
-    implementation("com.blr19c.falowp:falowp-bot-utils-db:$falowpVersion")
-    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:DRIVER_VERSION")
+    implementation("com.blr19c.falowp:falowp-bot-utils-db:${VERSION}")
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:${VERSION}")
 }
 ```
 

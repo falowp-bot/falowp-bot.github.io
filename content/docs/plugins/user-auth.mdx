@@ -23,16 +23,16 @@ description: 使用用户资料、权限检查和用户封禁功能。
 
 ```kotlin
 dependencies {
-    implementation("com.blr19c.falowp:falowp-bot-plugin-user:$falowpVersion")
-    implementation("com.blr19c.falowp:falowp-bot-plugin-auth:$falowpVersion")
-    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:DRIVER_VERSION")
+    implementation("com.blr19c.falowp:falowp-bot-plugin-user:${VERSION}")
+    implementation("com.blr19c.falowp:falowp-bot-plugin-auth:${VERSION}")
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:${VERSION}")
 }
 ```
 
 插件源码需要直接调用数据库 API 时，再把 `falowp-bot-utils-db` 声明为直接依赖：
 
 ```kotlin
-implementation("com.blr19c.falowp:falowp-bot-utils-db:$falowpVersion")
+implementation("com.blr19c.falowp:falowp-bot-utils-db:${VERSION}")
 ```
 
 ## 用户资料

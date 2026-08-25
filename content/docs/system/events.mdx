@@ -42,7 +42,7 @@ data class BuildFinishedEvent(
 }
 
 // 发布
-publishEvent(BuildFinishedEvent("1.2.0", true))
+publishEvent(BuildFinishedEvent("${VERSION}", true))
 
 // 订阅
 private val build = eventListener<BuildFinishedEvent> { event -> /* ... */ }

@@ -35,8 +35,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build static site
-        env:
-          NEXT_PUBLIC_FALOWP_VERSION: ${{ vars.FALOWP_VERSION || '未标记' }}
         run: pnpm build
 
       - name: Upload Pages artifact

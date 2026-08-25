@@ -18,14 +18,12 @@ description: 介绍小花落项目的依赖、入口和启动配置。
 
 ```kotlin
 plugins {
-    kotlin("jvm") version "2.4.0"
-    id("io.ktor.plugin") version "3.5.2"
+    kotlin("jvm") version "${VERSION}"
+    id("io.ktor.plugin") version "${VERSION}"
 }
 
 group = "com.example.bot"
-version = "1.0.0"
-
-val falowpVersion: String = project.property("falowpVersion").toString()
+version = "${VERSION}"
 
 kotlin { jvmToolchain(25) }
 application { mainClass.set("com.example.bot.ApplicationKt") }
@@ -36,18 +34,14 @@ repositories {
 }
 
 dependencies {
-    implementation("com.blr19c.falowp:falowp-bot-system:$falowpVersion")
-    implementation("com.blr19c.falowp:falowp-bot-adapter-nc:$falowpVersion")
+    implementation("com.blr19c.falowp:falowp-bot-system:${VERSION}")
+    implementation("com.blr19c.falowp:falowp-bot-adapter-nc:${VERSION}")
 }
 ```
 
-在项目根目录的 `gradle.properties` 中统一标记模块版本：
+将示例中的 `${VERSION}` 替换为对应组件的实际版本号。
 
-```properties
-falowpVersion=VERSION
-```
-
-<Callout>核心、适配器、插件和服务组件读取同一个 `falowpVersion`。</Callout>
+<Callout>核心、适配器、插件和服务组件应使用相互兼容的版本。</Callout>
 
 ## 入口和目录
 

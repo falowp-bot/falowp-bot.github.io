@@ -30,4 +30,4 @@ pnpm build
 
 ## 文档版本
 
-站点从 `NEXT_PUBLIC_FALOWP_VERSION` 读取统一版本标记。本地构建可直接设置该变量；GitHub Pages 从仓库变量 `FALOWP_VERSION` 注入。正文中的 Gradle 示例统一读取项目的 `falowpVersion` 属性。
+页面和依赖示例中的版本号统一使用 `${VERSION}` 占位，发布文档时不需要配置额外的版本变量。
