@@ -1,0 +1,43 @@
+---
+title: 审核、翻译与桌面
+description: 介绍文本审核、翻译和桌面日志组件。
+---
+
+# 审核、翻译与桌面
+
+## 文本审核
+
+`falowp-bot-utils-censor` 提供 `BaiduTextCensor` 与结构化 `CensorResult`。
+
+```yaml
+bot:
+  plugin:
+    censor:
+      baidu:
+        tokenUrl: "BAIDU_TOKEN_ENDPOINT"
+        censorUrl: "BAIDU_CENSOR_ENDPOINT"
+        clientId: "FROM_SECRET"
+        clientSecret: "FROM_SECRET"
+```
+
+结果包含结论类型、子类型、命中项和替换文本。`SendMessageHook` 可在消息发送前调用审核接口并修改消息链。
+
+## 腾讯翻译
+
+`falowp-bot-utils-translate` 的 `TxTranslate` 使用：
+
+```yaml
+bot:
+  plugin:
+    translate:
+      tx:
+        secretId: "FROM_SECRET"
+        secretKey: "FROM_SECRET"
+        region: "ap-shanghai"
+```
+
+SDK 凭据只保留在部署环境，并限制其云权限。
+
+## Desktop
+
+`falowp-bot-utils-desktop` 注册桌面日志相关 Web 路由，适合本地观察。它属于 `@PluginUtils`，加入依赖即初始化。生产暴露前审查路由、配置认证和反向代理访问控制；无桌面需求时不要引入。

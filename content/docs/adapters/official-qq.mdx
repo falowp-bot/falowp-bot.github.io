@@ -1,0 +1,33 @@
+---
+title: QQ 官方机器人
+description: 介绍 QQ 官方 Gateway、REST API、群消息与频道消息。
+---
+
+# QQ 官方机器人
+
+```kotlin
+implementation("com.blr19c.falowp:falowp-bot-adapter-qq:$falowpVersion")
+```
+
+```yaml
+bot:
+  adapter:
+    qq:
+      appId: "YOUR_APP_ID"
+      token: "YOUR_APP_TOKEN"
+      apiUrl: "https://api.sgroup.qq.com"
+      websocketAddressUrl: "https://api.sgroup.qq.com/gateway"
+```
+
+适配器使用 `Bot <appId>.<token>` 鉴权，先从 Gateway 地址接口取得 WebSocket URL，再完成 Identify、心跳和断线 Resume。源码订阅了群/私聊与频道相关 intents；实际可收到的事件仍取决于机器人资质和后台权限。
+
+## 两套 BotApi
+
+- `QQBotApi`：官方群与私聊，支持文本、图片 URL 上传、引用消息。
+- `ChannelBotApi`：QQ 频道，支持频道文本、AT 和图片；调用私聊会抛出“不支持私聊”。
+
+频道与官方群会分别维护已见目标集合，供 `sendAllGroup` 和调度支持使用。平台发送接口有限，语音、视频、戳一戳、合并转发等统一消息类型不会拥有与 NapCat 相同的表现。
+
+## 上线检查
+
+确认沙箱/生产域名、事件权限、群和频道授权、机器人可主动发送的窗口以及官方频控。API 返回失败时先查看请求目标类型和机器人后台权限，再检查 token。

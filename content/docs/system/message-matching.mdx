@@ -1,0 +1,54 @@
+---
+title: 消息处理
+description: 介绍消息正则、权限、来源和自定义匹配条件。
+---
+
+# 消息处理
+
+## 快捷形式
+
+```kotlin
+private val command = message(
+    regex = Regex("广播\\s+(.+)"),
+    auth = ApiAuth.ADMINISTRATOR,
+    order = 0,
+    terminateEvent = true,
+) { (text) -> sendAllGroup(SendMessage.builder(text).build()) }
+```
+
+## `MessageMatch.Build`
+
+```kotlin
+val match = MessageMatch.Build()
+    .regex(Regex("识图"))
+    .sourceType(SourceTypeEnum.GROUP)
+    .messageType(MessageTypeEnum.MESSAGE)
+    .atMe()
+    .appendCustom { it.content.image.isNotEmpty() }
+    .build()
+
+private val vision = message(match) { /* ... */ }
+```
+
+| 条件 | 行为 |
+| --- | --- |
+| `regex` | 对清洗后的 `content.message` 做完整匹配 |
+| `auth` | 要求最低权限，由 auth 插件的执行 Hook 检查 |
+| `atMe` | `true` 时要求 AT 列表包含机器人 ID |
+| `sendId` | 只允许指定发送者 |
+| `sourceType` | `GROUP`、`PRIVATE`、`SYSTEM` 或 `UNKNOWN` |
+| `messageType` | `MESSAGE`、`VOICE`、`VIDEO`、`SHARE`、`FILE`、`OTHER` |
+| `adapterId` | 限制适配器 ID，例如 `TG` |
+| `custom` | 自定义布尔条件 |
+
+`appendCustom` 会把新条件与旧条件用 `&&` 组合；重复调用 `custom` 会覆盖。`allMatch()` 不代表绕过权限，只表示没有消息字段条件。
+
+## 权限条件
+
+`MessageMatch.auth` 保存处理器要求的最低权限，`falowp-bot-plugin-auth` 负责在执行前完成检查。没有加载权限插件时，`auth` 条件不会阻止处理器执行。
+
+权限从高到低是 `ADMINISTRATOR`、`MANAGER`、`ORDINARY_MEMBER`；适配器根据系统管理员列表和平台角色填充发送者权限。完整执行流程见[用户与权限](/docs/plugins/user-auth#权限控制)。
+
+## 队列消息
+
+`queueMessage` 保证同一注册器按队列顺序处理。`queueCapacity` 限制等待数；默认成功提示只在前方有人时发送，溢出时回复繁忙。`onSuccess` 与 `onOverFlow` 分别处理入队和溢出。

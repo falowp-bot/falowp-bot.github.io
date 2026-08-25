@@ -1,0 +1,189 @@
+---
+title: 用户与权限
+description: 使用用户资料、权限检查和用户封禁功能。
+---
+
+# 用户与权限
+
+<Lead>用户资料、权限检查和用户封禁是三个独立行为，由两个插件模块和数据库组件共同提供。</Lead>
+
+## 模块职责
+
+| 模块 | 提供的能力 | 数据库表 |
+| --- | --- | --- |
+| `falowp-bot-plugin-user` | 保存用户资料，查询用户，修改金币和好感度，生成群内排行 | `bot_user` |
+| `falowp-bot-plugin-auth` | 检查消息处理器的最低权限，执行 `ban` / `unban`，拦截被封禁用户 | `ban_info` |
+| `falowp-bot-utils-db` | 建立数据源并执行 Exposed 事务 | 不创建业务表 |
+
+两个插件可以分别启用。它们都需要可用的数据库配置；数据库连接方式见[数据库](/docs/utilities/database)。
+
+## 添加依赖
+
+同时启用用户资料和权限控制：
+
+```kotlin
+dependencies {
+    implementation("com.blr19c.falowp:falowp-bot-plugin-user:$falowpVersion")
+    implementation("com.blr19c.falowp:falowp-bot-plugin-auth:$falowpVersion")
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:DRIVER_VERSION")
+}
+```
+
+插件源码需要直接调用数据库 API 时，再把 `falowp-bot-utils-db` 声明为直接依赖：
+
+```kotlin
+implementation("com.blr19c.falowp:falowp-bot-utils-db:$falowpVersion")
+```
+
+## 用户资料
+
+### 数据何时写入
+
+每次收到消息时，用户插件在消息处理器执行前完成以下操作：
+
+1. 按 `(userId, sourceId)` 查询发送者。
+2. 用户不存在时创建记录，金币和好感度初始为 `0`。
+3. 用户已存在时更新昵称、头像和权限快照。
+4. 对消息中被 AT 的用户执行相同的创建或更新流程。
+
+同一个平台用户在不同群聊或私聊来源中对应不同记录。`sourceId` 是资料隔离边界。
+
+### 用户数据
+
+`BotUserVo` 是一次查询得到的用户快照：
+
+| 字段 | 类型 | 内容 |
+| --- | --- | --- |
+| `id` | `Int` | 数据库主键 |
+| `userId` | `String` | 平台用户 ID |
+| `nickname` | `String` | 最近一次消息中的昵称 |
+| `avatar` | `ImageUrl` | 最近一次消息中的头像 |
+| `auth` | `ApiAuth` | 最近一次消息中的权限快照 |
+| `impression` | `BigDecimal` | 好感度 |
+| `coins` | `BigDecimal` | 金币 |
+| `sourceId` | `String` | 消息来源 ID |
+| `sourceType` | `String` | 消息来源类型 |
+
+### 查询当前用户
+
+下面的扩展函数在 `BotApi` 上调用，因此可直接用于消息处理器：
+
+```kotlin
+import com.blr19c.falowp.bot.plugins.user.currentUser
+import com.blr19c.falowp.bot.plugins.user.currentUserOrNull
+
+private val balance = message(Regex("我的金币")) {
+    val user = currentUser()
+    sendReply("当前金币：${user.coins.toPlainString()}")
+}
+```
+
+| API | 返回值 | 空值行为 |
+| --- | --- | --- |
+| `BotApi.currentUser()` | `BotUserVo` | 找不到用户时抛出空值异常 |
+| `BotApi.currentUserOrNull()` | `BotUserVo?` | 找不到用户时返回 `null` |
+| `queryByUserId(userId, sourceId)` | `BotUserVo?` | 指定来源中没有记录时返回 `null` |
+| `queryBySourceId(sourceId)` | `List<BotUserVo>` | 指定来源中的全部用户 |
+
+`currentUser()` 使用当前消息的 `sender.id` 和 `source.id`。它依赖消息上下文，不适用于没有真实发送者的系统任务。
+
+### 查询来源中的用户
+
+`queryBySourceId` 的第二个参数可以调整 Exposed 查询，例如排序和限制数量：
+
+```kotlin
+import com.blr19c.falowp.bot.plugins.user.database.BotUser
+import com.blr19c.falowp.bot.plugins.user.queryBySourceId
+import org.jetbrains.exposed.v1.core.SortOrder
+
+val topUsers = queryBySourceId(receiveMessage.source.id) { query ->
+    query.orderBy(BotUser.coins, SortOrder.DESC).take(10)
+}
+```
+
+自定义查询块返回 `List<ResultRow>`，随后由用户插件转换为 `BotUserVo`。
+
+### 修改金币与好感度
+
+```kotlin
+import com.blr19c.falowp.bot.plugins.user.decrementCoins
+import com.blr19c.falowp.bot.plugins.user.decrementImpression
+import com.blr19c.falowp.bot.plugins.user.incrementCoins
+import com.blr19c.falowp.bot.plugins.user.incrementImpression
+
+val user = currentUser()
+user.incrementCoins(10.toBigDecimal())
+user.decrementCoins(3.toBigDecimal())
+user.incrementImpression(1.toBigDecimal())
+user.decrementImpression(1.toBigDecimal())
+```
+
+四个函数直接更新数据库中的数值。`BotUserVo` 本身不会同步变化；更新后需要最新值时，重新查询用户记录。
+
+### 内置命令
+
+| 命令 | 结果 |
+| --- | --- |
+| `金币排行` | 当前来源中金币最高的 7 名用户 |
+| `好感度排行` | 当前来源中好感度最高的 7 名用户 |
+
+排行以图片形式回复，只统计当前 `sourceId` 下的用户记录。
+
+## 权限控制
+
+### 权限级别
+
+| 级别 | `code` | 来源 |
+| --- | ---: | --- |
+| `ADMINISTRATOR` | `Int.MAX_VALUE` | `bot.system.administrator` 中的用户 ID |
+| `MANAGER` | `100` | 适配器映射的平台管理角色 |
+| `ORDINARY_MEMBER` | `0` | 普通成员 |
+
+权限插件比较消息处理器要求的 `auth.code` 与当前消息发送者的 `auth.code`。检查使用的是适配器写入 `ReceiveMessage.sender.auth` 的实时消息数据，不读取 `BotUserVo.auth` 快照。
+
+### 限制消息处理器
+
+```kotlin
+private val reload = message(
+    regex = Regex("重新加载"),
+    auth = ApiAuth.ADMINISTRATOR,
+) {
+    sendReply("已执行")
+}
+```
+
+执行顺序如下：
+
+1. 消息匹配器选中处理器。
+2. 权限插件读取处理器的最低权限。
+3. 权限不足时触发 `NoAuthorizationHook`。
+4. 默认回复“你还没有权限操作此功能”，并终止该处理器。
+5. 权限满足时继续执行消息处理器。
+
+<Callout type="warning">`auth = ...` 只保存最低权限条件。运行时权限检查由 `falowp-bot-plugin-auth` 提供；未加载该插件时，条件不会阻止处理器执行。</Callout>
+
+### 封禁与解封
+
+| 命令 | 执行权限 | 目标 |
+| --- | --- | --- |
+| `ban @用户` | `ADMINISTRATOR` | 当前来源中被 AT 的非超级管理员用户 |
+| `unban @用户` | `ADMINISTRATOR` | 当前来源中被 AT 的用户 |
+
+封禁记录按 `(userId, sourceId)` 保存。被封禁用户在对应来源中的新消息会在接收阶段终止，以该用户作为执行者的事件也会在事件处理阶段终止。其他来源不受影响。
+
+封禁集合在首次使用时从数据库加载，`ban` 和 `unban` 会同时更新数据库与运行时集合。
+
+## 故障定位
+
+| 现象 | 检查项 |
+| --- | --- |
+| 启动时数据库初始化失败 | JDBC 驱动、`bot.plugin.db` 和主数据源配置 |
+| `currentUser()` 找不到用户 | 是否处于真实消息上下文；用户资料插件是否已加载；当前来源是否存在记录 |
+| 金币更新后变量仍是旧值 | `BotUserVo` 是快照；更新后重新查询 |
+| 同一用户出现多条资料 | 不同 `sourceId` 会分别保存，这是预期的隔离行为 |
+| `auth` 条件没有拦截 | 权限插件是否已加载；适配器是否正确填充发送者权限 |
+| 管理员命令仍提示无权限 | 用户 ID 是否以字符串形式出现在 `bot.system.administrator` 中 |
+| 封禁在另一个群不生效 | 封禁记录按 `sourceId` 隔离 |
+| 排行图片生成失败 | Webdriver、Chromium、字体和运行环境依赖 |
+
+消息匹配条件的完整说明见[消息处理](/docs/system/message-matching)。

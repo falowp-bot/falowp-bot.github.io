@@ -1,0 +1,40 @@
+---
+title: 配置与资源
+description: 介绍 YAML、系统资源和插件相对资源。
+---
+
+# 配置与资源
+
+配置 API 详见[完整配置说明](/docs/configuration)。这一页关注资源文件和结构化 YAML。
+
+## 读取资源
+
+```kotlin
+val pluginText = readPluginResource("file.txt") {
+    it.bufferedReader().use { reader -> reader.readText() }
+}
+
+val appText = readResource("application.yaml") {
+    it.bufferedReader().use { reader -> reader.readText() }
+}
+```
+
+`readPluginResource` 根据调用插件推导资源目录，例如 `src/main/resources/plugins/file/file.txt`；`readResource` 从整个 ClassLoader 直接查找。读取图片可用 `readBytes()` 再 `encodeToBase64String()`。
+
+## 结构化 YAML
+
+```kotlin
+val sources = pluginConfigList("")
+for (source in sources) {
+    val map = source.toMap()
+    // 解析自定义结构
+}
+```
+
+`JacksonYAMLValue` 还提供点路径 `getConfig("a.b")`、`getListConfig`、`getStringOrNull` 和 `getListStringOrNull`。缺失节点返回空包装而不是立即抛错；`*Property` 没有默认值时才抛出“未找到配置”。
+
+## 资源目录
+
+- 插件默认配置放 `src/main/resources/plugin-conf/<artifact>.yaml`。
+- 插件私有模板放 `src/main/resources/plugins/<插件短名>/`。
+- 默认配置只放无密钥值和扫描包；环境密钥留给应用配置。

@@ -1,0 +1,43 @@
+---
+title: 排错参考
+description: 介绍启动、扫描、消息、权限、任务和部署问题。
+---
+
+# 排错参考
+
+## 插件没有响应
+
+1. 包路径是否在 `bot.system.pluginPackage` 下，并包含 `.plugins` 约定。
+2. 类是否有 `@Plugin`，`enable` 是否为 `true`。
+3. 注册器是否在 `init` 调用 `register()`。
+4. 正则使用完整匹配，实际清洗后文本是否完全符合。
+5. 前一个插件是否匹配后以 `terminateEvent=true` 截断。
+6. `atMe`、来源、类型、发送者和 Adapter 条件是否过严。
+
+## 权限不生效
+
+检查 `falowp-bot-plugin-auth`、数据库配置、适配器角色映射和 `bot.system.administrator` 中的字符串用户 ID。权限的数据来源和执行顺序见[用户与权限](/docs/plugins/user-auth#权限控制)。
+
+## 定时任务不执行
+
+确认适配器已完成加载、Cron 是六段格式、`zoneOffset` 正确。默认 `useGreeting=true`，晚安到早安之间会延迟。调度任务不能 `sendReply`；使用明确 `sourceId`。
+
+## WebServer 启动失败
+
+检查 `web.port`、`web.auth` 是否存在，端口是否被占用。动态路由应在插件 `init` 注册，不能等服务启动后再添加。
+
+## 图片或帮助生成失败
+
+确认 Playwright Chromium、系统字体和运行库已安装；容器有足够共享内存。HTML 选择器必须存在，否则元素截图会失败。
+
+## 数据库初始化失败
+
+按[数据库故障定位](/docs/utilities/database#故障定位)检查 JDBC 驱动、连接地址、网络、账号权限和主数据源标记。多个数据源必须包含一个 `primary: true`。
+
+## 版本错误
+
+System、Adapter、Plugin、Utils 使用完全相同的版本。出现 `NoSuchMethodError`、`ClassNotFoundException` 或签名不一致时，先查看 Gradle dependencyInsight，清理旧的本地 Maven 快照再构建。
+
+## GitHub Pages 发布
+
+仓库必须命名为 `falowp-bot.github.io` 才会发布到组织根地址。Settings → Pages 的 Source 选择 GitHub Actions；工作流构建 Next 静态导出并上传 `out/`。若页面刷新 404，确认 `output: "export"`、`trailingSlash: true` 和所有动态文档路径都由 `generateStaticParams()` 生成。

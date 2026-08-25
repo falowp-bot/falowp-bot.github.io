@@ -1,0 +1,43 @@
+---
+title: 定时任务
+description: 介绍 Cron、周期、启动任务与闲时控制。
+---
+
+# 定时任务
+
+## Cron
+
+```kotlin
+private val daily = cronScheduling("0 0 9 * * *", useGreeting = false) {
+    sendGroup(SendMessage.builder("早上好").build(), sourceId = "GROUP_ID")
+}
+```
+
+Cron 为六段格式，包含秒。时区由 `bot.system.zoneOffset` 控制。源码和示例中同时存在 `?` 与 `*` 的写法，例如 `0 0 12 ? * THU`。
+
+## 周期与启动后任务
+
+```kotlin
+private val poll = periodicScheduling(
+    period = 30.seconds,
+    initialDelay = 5.seconds,
+    fixedRate = true,
+    useGreeting = false,
+) { /* 轮询 */ }
+
+private val init = applicationInitScheduling {
+    log().info("适配器已完成初始化")
+}
+```
+
+`fixedRate=false` 表示以上一次完成时间为基准；`true` 以上一次计划时间为基准。耗时可能超过周期时，固定速率更容易连续追赶，应配合互斥、超时或跳过策略。
+
+## `useGreeting`
+
+默认 `true`：晚安事件后进入闲时，任务会延迟到下次早安再执行。监控、Token 刷新、关键 Webhook 补偿等不能暂停的任务要设为 `false`。
+
+## Scheduling BotApi 限制
+
+调度任务没有当前会话，不能 `sendReply()` 或 `self()`。它根据目标 ID 从所有 `SchedulingBotApiSupport` 中选择能发送的 Adapter；`sendAllGroup` 会遍历全部可用 Adapter。目标 ID 在多平台重复时，先匹配到的支持实现会被使用。
+
+任务在适配器加载完成后才开始等待触发时间。异常会被记录并尝试调度下一次，不会永久停止整个调度器。

@@ -1,0 +1,40 @@
+---
+title: 缓存、JSON 与图片
+description: 介绍缓存、JSON、ImageUrl 与字符串工具。
+---
+
+# 缓存、JSON 与图片
+
+## 缓存委托
+
+```kotlin
+private val usersCache = CacheMap<String, User>(10.minutes, maximumSize = 5_000) { id -> loadUser(id) }
+private val user by usersCache
+
+val value = user("42")
+usersCache.put("42", value)
+usersCache.refresh("42")
+```
+
+`CacheReference<T>` 用于无参数值，读取委托得到缓存结果；`OnlyReadOnceReference` 只返回一次非空值，启动后任务触发器用它确保只执行一次。缓存加载器内部使用 `runBlocking`，不适合长时间阻塞任务；远程调用应设置超时。
+
+## JSON
+
+```kotlin
+val user: User = Json.readObj(jsonText)
+val node = Json.readJsonNode(jsonText)
+val name = node.pathIgnoreCase("name").safeString()
+val payload = Json.toJsonString(user)
+```
+
+全局 Mapper 忽略未知字段、不输出 null，并支持 `yyyy-MM-dd HH:mm:ss` 的 `LocalDateTime`。`foldPath("a.b.c")` 按点路径读取。
+
+## `ImageUrl`
+
+`ImageUrl` 自动识别 HTTP(S)、文件 URI 与 Base64。常用方法：`toBytes`、`toBase64`、`toHtmlBase64`、`toBufferedImage`、`toFile`、`toUrl`。`File`、`String`、`ByteArray` 与 `URI` 都有 `toImageUrl()` 扩展。
+
+`toUrl()` 对裸 Base64 通常无法直接生成公网地址；安装 MinIO 工具并启用 `registerImageUrl` 后，可注册上传函数，把 Base64 图片转换为平台可访问 URL。
+
+## 字符串扩展
+
+`md5()`、`sha256()`、`urlEncoder()`、`urlDecoder()`、`toURI()`。`toURI()` 会处理 HTTP、`file://`、相对/绝对路径和 Windows 路径；普通文本会 URL 编码后转 URI。

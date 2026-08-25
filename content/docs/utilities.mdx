@@ -1,0 +1,14 @@
+---
+title: 服务组件
+description: 数据库、对象存储、文本审核、翻译和桌面组件入口。
+---
+
+# 服务组件
+
+| 组件 | 模块 | 内容 |
+| --- | --- | --- |
+| [数据库](/docs/utilities/database) | `falowp-bot-utils-db` | JDBC 数据源、主数据源选择与 Exposed 事务 |
+| [MinIO](/docs/utilities/minio) | `falowp-bot-utils-minio` | 图片和文件上传 |
+| [外部服务](/docs/utilities/services) | `falowp-bot-utils-censor`、`falowp-bot-utils-translate`、`falowp-bot-utils-desktop` | 文本审核、翻译和桌面日志 |
+
+组件加入依赖后由插件扫描器初始化。各页面列出了对应配置键和公开 API。

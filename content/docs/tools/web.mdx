@@ -1,0 +1,41 @@
+---
+title: WebClient 与 WebServer
+description: 介绍共享 Ktor 客户端、动态路由和 BotApi。
+---
+
+# WebClient 与 WebServer
+
+## 共享客户端
+
+`webclient()` 返回 CIO `HttpClient`，默认 JSON、随机常见 User-Agent、WebSocket、5 秒请求/连接/Socket 超时。`longTimeoutWebclient()` 把超时改为 10 分钟。
+
+```kotlin
+val response = webclient().get("https://example.com/api")
+val json = response.bodyAsJsonNode()
+val map = response.bodyAsMap<String, String>()
+val location = webclient().urlToRedirectUrl("https://example.com/short")
+```
+
+Jackson 3 转换器可用于 Ktor Client 和 Server；全局 `Json` 另提供 `readObj<T>()` 与 `toJsonString()`。
+
+## 注册路由
+
+```kotlin
+init {
+    WebServer.registerRoute {
+        post("/build/webhook") {
+            val event = call.receive<BuildFinishedEvent>()
+            botApi.publishEvent(event)
+            call.respond(mapOf("ok" to true))
+        }
+    }
+}
+```
+
+`RouteDsl` 委托 Ktor `Route`，并额外提供调度型 `botApi`。因此路由可发布事件或向明确目标发送消息，但不能回复某条会话。
+
+System 内置 `GET /ping`。`WebServer.registerRoute` 必须在服务启动前完成；插件 `init` 阶段注册正合适。
+
+## 鉴权与部署
+
+Server 安装了 Basic Auth，但动态路由是否包在 `authenticate {}` 中取决于你的路由定义；默认不是自动保护。生产部署应显式使用 `authenticate`，并在 Caddy/Nginx/网关终止 TLS、限制请求体、配置速率限制与来源验证。

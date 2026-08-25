@@ -1,0 +1,160 @@
+---
+title: 数据库
+description: 配置 falowp-bot-utils-db，并使用 Exposed 访问单个或多个 JDBC 数据源。
+---
+
+# 数据库
+
+<Lead>`falowp-bot-utils-db` 负责建立 JDBC 数据源，并为插件提供统一的 Exposed 事务入口。</Lead>
+
+## 完成配置所需的内容
+
+数据库功能由三部分组成：
+
+| 部分 | 作用 |
+| --- | --- |
+| `falowp-bot-utils-db` | 读取数据源配置，保存已连接的数据源，提供事务 API |
+| JDBC 驱动 | 建立实际的数据库连接 |
+| `bot.plugin.db` | 定义驱动、连接地址、账号和主数据源 |
+
+`falowp-bot-utils-db` 包含 Exposed，但不包含 MariaDB、PostgreSQL 等数据库的 JDBC 驱动。
+
+## 添加依赖
+
+下面的依赖以 MariaDB 为例。`falowpVersion` 使用项目统一的版本标记；JDBC 驱动版本由应用单独管理。
+
+```kotlin
+dependencies {
+    implementation("com.blr19c.falowp:falowp-bot-utils-db:$falowpVersion")
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:DRIVER_VERSION")
+}
+```
+
+如果插件源码直接引用 `multiTransaction`、`primaryDatabase` 或 `databaseMap`，`falowp-bot-utils-db` 需要作为直接依赖声明。
+
+## 配置单个数据源
+
+```yaml
+bot:
+  plugin:
+    db:
+      - main:
+          driver: "org.mariadb.jdbc.Driver"
+          url: "jdbc:mariadb://127.0.0.1:3306/falowp_bot"
+          username: "falowp_bot"
+          password: "FROM_DEPLOYMENT_SECRET"
+```
+
+只有一个数据源时，该数据源自动成为主数据源，不需要填写 `primary`。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| 数据源名称 | YAML 对象键 | 传给 `multiTransaction(name)` 的名称，例如 `main` |
+| `driver` | String | JDBC 驱动类名 |
+| `url` | String | JDBC 连接地址 |
+| `username` | String | 数据库账号 |
+| `password` | String | 数据库密码 |
+| `primary` | Boolean | 多数据源配置中的主数据源标记 |
+
+配置在插件扫描阶段注册。没有可用的主数据源时，数据库组件初始化失败；驱动或连接问题会在首次建立连接时出现。包含数据表的模块通常会在启动阶段执行事务，因此这类问题通常也会阻止应用完成启动。
+
+## 配置多个数据源
+
+```yaml
+bot:
+  plugin:
+    db:
+      - main:
+          driver: "org.mariadb.jdbc.Driver"
+          url: "jdbc:mariadb://127.0.0.1:3306/falowp_bot"
+          username: "falowp_bot"
+          password: "FROM_DEPLOYMENT_SECRET"
+          primary: true
+      - analytics:
+          driver: "org.postgresql.Driver"
+          url: "jdbc:postgresql://127.0.0.1:5432/analytics"
+          username: "analytics"
+          password: "FROM_DEPLOYMENT_SECRET"
+```
+
+多个数据源必须包含主数据源。配置中应只有一个 `primary: true`，否则最终选择结果会受配置读取顺序影响。
+
+## 执行事务
+
+### 使用主数据源
+
+```kotlin
+import com.blr19c.falowp.bot.plugins.db.multiTransaction
+
+val records = multiTransaction {
+    UserSettings.selectAll().toList()
+}
+```
+
+省略名称时，`multiTransaction` 使用主数据源，并把代码块作为 Exposed `Transaction` 执行。
+
+### 使用命名数据源
+
+```kotlin
+val reports = multiTransaction("analytics") {
+    DailyReport.selectAll().toList()
+}
+```
+
+传入的名称对应 `bot.plugin.db` 下的数据源名称。数据库表对象和查询仍使用 Exposed API。
+
+## API 参考
+
+| API | 返回值 | 行为 |
+| --- | --- | --- |
+| `multiTransaction { ... }` | 代码块结果 | 在主数据源中执行同步事务 |
+| `multiTransaction(name) { ... }` | 代码块结果 | 在指定名称的数据源中执行同步事务 |
+| `primaryDatabase()` | `Database` | 返回当前主数据源 |
+| `databaseMap()` | `Map<String, Database>` | 返回按配置名称保存的数据源表 |
+
+`databaseMap()` 暴露的是当前数据源注册表，不是独立快照。它用于读取已加载的数据源；数据源的创建和主数据源选择由配置完成。
+
+## 创建数据表
+
+`falowp-bot-utils-db` 只负责连接和事务，不会自动创建业务表。插件可以在自己的表对象初始化阶段调用 Exposed：
+
+```kotlin
+import com.blr19c.falowp.bot.plugins.db.multiTransaction
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+
+object UserSettings : Table("user_settings") {
+    val userId = varchar("user_id", 64)
+    val sourceId = varchar("source_id", 128)
+
+    init {
+        multiTransaction {
+            uniqueIndex(userId, sourceId)
+            SchemaUtils.create(UserSettings)
+        }
+    }
+}
+```
+
+包含数据表的内置模块会在初始化各自表对象时执行建表逻辑。
+
+## 运行边界
+
+- 事务使用同步 JDBC 调用，事务代码会占用当前线程直到完成。
+- 网络请求、文件上传等非数据库操作不属于数据库事务范围。
+- 数据库组件不配置连接池或迁移工具；连接创建遵循 JDBC 与 Exposed 的默认行为。
+- JDBC 驱动由应用运行环境提供。
+- 账号密码属于部署配置，不写入源码或可公开的配置文件。
+
+## 故障定位
+
+| 现象 | 检查项 |
+| --- | --- |
+| 找不到驱动类 | JDBC 驱动是否出现在运行时依赖中；`driver` 是否为正确的类名 |
+| 无法建立连接 | `url`、网络、端口、TLS 参数、账号权限 |
+| 提示需要主数据源 | 是否没有数据源，或多个数据源中没有 `primary: true` |
+| 指定数据源的查询失败 | `multiTransaction(name)` 的名称是否与 YAML 对象键完全一致 |
+| 表不存在 | 对应模块的建表逻辑是否执行；数据库账号是否具有建表权限 |
+| 字符显示异常 | 数据库、表和 JDBC URL 的字符集配置是否一致 |
+
+用户资料和权限模块的数据库使用方式见[用户与权限](/docs/plugins/user-auth)。

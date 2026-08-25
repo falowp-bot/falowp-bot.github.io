@@ -1,0 +1,25 @@
+---
+title: 社区与娱乐插件
+description: 介绍金币、签到、词云、复读和定时内容模块。
+---
+
+# 社区与娱乐插件
+
+## 用户经济
+
+- `falowp-bot-plugin-coin`：提供“打工”和“打劫”，通过用户插件修改金币和好感度。
+- `falowp-bot-plugin-signin`：提供“签到”，保存每日记录，查询累计与当月签到，并更新用户数值。
+- `falowp-bot-plugin-user`：保存用户资料并提供金币、好感度和排行 API。
+
+## 群聊氛围
+
+- `falowp-bot-plugin-repeat`：队列消费全消息，满足重复条件时复读，同时监听 `NudgeEvent`。
+- `falowp-bot-plugin-wordcloud`：收集消息文本，在晚安 `GreetingEvent` 时发布 `WordCloudEvent` 并生成词云。`bot.plugin.wordcloud.blockWords` 排除指定词语；`WordCloudSegmentHook` 在成图前提供词频修改入口。
+- `falowp-bot-plugin-idle`：每天 10:00 获取日历信息并向所有群发送摸鱼提醒。
+- `falowp-bot-plugin-kfc`：每周四 12:00 发送文案。
+
+这些定时插件默认受 Greeting 闲时控制；处于闲时窗口时，任务会延迟到闲时结束后执行。
+
+## 组合注意
+
+用户、金币、签到和词云模块共用[数据库组件](/docs/utilities/database)。复读模块属于全量消息旁路逻辑，其注册器顺序和终止行为会影响其他全量消息处理器。

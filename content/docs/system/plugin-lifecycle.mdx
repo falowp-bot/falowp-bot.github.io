@@ -1,0 +1,36 @@
+---
+title: 插件与注册生命周期
+description: 介绍插件扫描、初始化、注册、排序与注销。
+---
+
+# 插件与注册生命周期
+
+## 声明与初始化
+
+```kotlin
+@Plugin(name = "天气", tag = "工具", desc = "查询天气")
+class Weather {
+    private val query = message(Regex("天气\\s+(.+)")) { (city) -> query(city) }
+    init { query.register() }
+}
+```
+
+扫描器实例化插件类，构造属性时创建注册器，随后 `init` 调用 `register()`。注册器带有 UUID `pluginId` 和声明它的 `originalClass`，框架据此关联帮助、配置、日志与 Hook 匹配。
+
+## 注册器类型
+
+| 注册器 | 注册目标 | 注销效果 |
+| --- | --- | --- |
+| `MessagePluginRegister` | 消息管理器 | 不再匹配新消息 |
+| `QueueMessagePluginRegister` | 消息管理器 + 专属队列 | 停止新的入队 |
+| `EventPluginRegister` | 事件管理器 | 不再接收事件 |
+| `HookPluginRegister` | Hook 管理器 | 从执行链移除 |
+| `TaskPluginRegister` | 调度器 | 取消并移除任务 |
+
+所有注册器都实现 `UnRegister`，可在运行时调用 `unregister()`。`runtimeHook` 会立即注册并返回注销句柄；`awaitReply` 会在成功、异常或外层取消时清理 Hook。
+
+## 顺序与传播
+
+消息插件和 Hook 使用 `order` 升序。消息插件默认 `order=0`、`terminateEvent=true`。全局旁路逻辑可设低顺序与 `terminateEvent=false`；AI 插件使用 `Int.MAX_VALUE`，让明确命令优先于兜底聊天。
+
+<Callout>不要忘记注册。声明了 `private val command = message(...)` 但没有在 `init` 调用 `command.register()`，项目可以编译，却永远不会响应。</Callout>

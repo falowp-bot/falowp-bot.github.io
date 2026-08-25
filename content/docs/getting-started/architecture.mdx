@@ -1,0 +1,36 @@
+---
+title: 运行流程与架构
+description: 介绍小花落从启动到执行插件的完整链路。
+---
+
+# 运行流程与架构
+
+## 启动链
+
+`start()` 在协程中依次初始化七部分：配置资源、Playwright、共享 Ktor 客户端、插件扫描、定时调度、协议适配器、内置 Ktor 服务。任一步抛出异常都会记录“系统启动失败”。
+
+## 消息链
+
+1. Adapter 接收平台事件并转换为 `ReceiveMessage`。
+2. `ReceiveMessageHook` 允许预处理；用户插件在这里持久化用户资料。
+3. Message 插件按 `order` 升序检查 `MessageMatch`。
+4. `MessagePluginExecutionHook` 包裹执行；权限插件在这里阻止越权调用。
+5. 正则捕获组被传入处理块；普通插件并发执行，队列插件串行消费。
+6. `PluginBotApi` 在发送前发布 `SendMessageHook`，发送后发布 `SendMessageEvent`。
+
+`terminateEvent=true` 表示某插件匹配并执行后，不再继续匹配排在后面的插件。需要统计、埋点、随机互动等旁路插件时，使用 `terminateEvent=false`。
+
+## 扫描规则
+
+- Adapter 来自 `bot.system.adapterPackage` 下带 `@BotAdapter` 的实现。
+- Plugin 来自 `bot.system.pluginPackage`；配置路径必须指向名为 `plugins` 的包或其父级扫描入口。
+- `@PluginUtils object` 会初始化一次，适合数据库、MinIO 等基础设施。
+- `@Plugin class` 会实例化，随后由类的 `init` 注册能力。
+
+## 并发模型
+
+消息、事件和任务都运行在协程作用域中。普通消息插件可同时处理多条消息；`queueMessage` 为单个注册器建立队列，适合 AI、生成图片和扫码登录等昂贵流程。跨请求共享状态时使用线程安全集合、`Mutex` 或数据库事务。
+
+## Adapter 解耦
+
+业务层优先依赖统一 `BotApi` 和消息模型。只有需要平台独有能力时才调用扩展，例如 `botApi.nc()`。这样同一个插件可以在 NapCat、QQ 官方机器人和 Telegram 之间复用。

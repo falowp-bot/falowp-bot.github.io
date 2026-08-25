@@ -1,0 +1,46 @@
+---
+title: 小花落文档
+description: 小花落的安装、配置、插件开发和平台接入文档。
+---
+
+# 小花落文档
+
+<Lead>使用 Kotlin 编写消息插件、事件监听、Hook 和定时任务，并通过适配器接入聊天平台。</Lead>
+
+<Version />
+
+## 从这里开始
+
+| 目标 | 文档 |
+| --- | --- |
+| 创建并启动应用 | [安装与启动](/docs/getting-started/installation) |
+| 编写消息插件 | [创建插件](/docs/getting-started/first-plugin) |
+| 配置系统、适配器和插件 | [配置文件](/docs/configuration) |
+| 处理消息和富媒体 | [消息处理](/docs/system/message-matching) |
+| 连接聊天平台 | [适配器概览](/docs/adapters) |
+| 启用现成功能 | [官方插件](/docs/plugins) |
+
+## 文档结构
+
+- **快速开始**：项目依赖、启动入口和配置文件。
+- **开发指南**：消息、事件、Hook、定时任务和帮助系统。
+- **平台接入**：NapCat、QQ 官方机器人和 Telegram。
+- **功能扩展**：官方插件、基础工具和服务组件。
+- **参考**：完整插件示例和问题排查。
+
+<Callout type="warning">配置示例中的 Token、密码和 API Key 均为占位符。运行时配置需要填写有效值。</Callout>
+
+## 最小插件
+
+```kotlin
+@Plugin(name = "回显", tag = "基础", desc = "回显一段文字")
+class Echo {
+    private val echo = message(Regex("回显\\s+(.+)")) { (text) ->
+        sendReply("你说的是：$text", reference = true)
+    }
+
+    init { echo.register() }
+}
+```
+
+下一页：[安装与启动](/docs/getting-started/installation)。

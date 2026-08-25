@@ -1,0 +1,84 @@
+---
+title: 完整插件示例
+description: 介绍包含命令、事件、任务和配置的完整插件。
+---
+
+# 完整插件示例
+
+这一示例包含消息入口、外部请求、自定义事件和定时更新。
+
+## 文件组成
+
+```text
+plugins/weather/
+├── Weather.kt
+├── WeatherCommand.kt
+├── WeatherService.kt
+├── WeatherUpdatedEvent.kt
+└── WeatherVo.kt
+```
+
+## 插件入口
+
+```kotlin
+@Plugin(name = "天气", tag = "工具", desc = "查询城市天气")
+class Weather {
+    private val query = queueMessage(Regex("天气\\s+(.+)")) { (city) ->
+        val weather = WeatherService.query(city)
+        sendReply(weather.toMessage(), reference = true)
+        publishEvent(WeatherUpdatedEvent(city, weather.temperature))
+    }
+
+    private val refresh = periodicScheduling(30.minutes, useGreeting = false) {
+        WeatherService.refresh()
+    }
+
+    init {
+        query.register()
+        refresh.register()
+    }
+}
+```
+
+## 配置
+
+```yaml
+bot:
+  plugin:
+    weather:
+      endpoint: "https://weather.example.com"
+      apiKey: "YOUR_API_KEY"
+```
+
+```kotlin
+object WeatherService {
+    private val endpoint by lazy { pluginConfigProperty("endpoint") }
+    private val apiKey by lazy { pluginConfigProperty("apiKey") }
+
+    suspend fun query(city: String): WeatherVo =
+        webclient().get("$endpoint/current") {
+            parameter("city", city)
+            bearerAuth(apiKey)
+        }.body()
+
+    suspend fun refresh() { /* 更新缓存 */ }
+}
+```
+
+## 自定义事件
+
+```kotlin
+data class WeatherUpdatedEvent(
+    val city: String,
+    val temperature: Double,
+) : Plugin.Listener.Event {
+    override val source = ReceiveMessage.Source.system()
+    override val actor = ReceiveMessage.User.empty()
+}
+
+private val changed = eventListener<WeatherUpdatedEvent> { event ->
+    log().info("天气已更新：{} {}", event.city, event.temperature)
+}
+```
+
+注册器、队列参数、事件字段和调度参数可分别在对应开发指南中查询。

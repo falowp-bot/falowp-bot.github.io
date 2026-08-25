@@ -1,0 +1,22 @@
+---
+title: 适配器概览
+description: 介绍 NapCat、QQ 官方机器人与 Telegram 的接入能力。
+---
+
+# 适配器概览
+
+| 适配器 | 模块 | 接入方式 | 覆盖范围 |
+| --- | --- | --- | --- |
+| NapCat | `falowp-bot-adapter-nc` | OneBot WebSocket + 可选 HTTP | QQ 私域群、丰富消息与平台扩展 |
+| QQ 官方 | `falowp-bot-adapter-qq` | 官方 Gateway + REST | 合规官方机器人、群/频道场景 |
+| Telegram | `falowp-bot-adapter-tg` | Long Polling | Telegram 群与私聊 |
+
+三者把输入转换成同一 `ReceiveMessage`，输出实现同一 `BotApi`。添加对应依赖后，模块内置的 `plugin-conf` 会自动合并 `adapterPackage`。
+
+## 能力差异
+
+- NapCat 支持引用、合并转发、戳一戳、表情、文件和大量 OneBot 扩展。
+- QQ 官方适配器同时处理群/私聊与频道；频道不支持私聊，发送类型受官方 API 限制。
+- Telegram 支持文本、AT、图片、语音、视频，并把群管理员映射为 `MANAGER`。
+
+跨平台插件只使用统一能力；必须使用平台特性时，通过 `adapter.id` 限制匹配或封装平台分支。

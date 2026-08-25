@@ -1,0 +1,47 @@
+---
+title: NapCat
+description: 介绍 NapCat WebSocket、HTTP、重连与扩展消息。
+---
+
+# NapCat
+
+```kotlin
+implementation("com.blr19c.falowp:falowp-bot-adapter-nc:$falowpVersion")
+```
+
+## 配置
+
+```yaml
+bot:
+  adapter:
+    nc:
+      wsAddress: "ws://127.0.0.1:8060?access_token=YOUR_TOKEN"
+      httpAddress: "http://127.0.0.1:8060?access_token=YOUR_TOKEN"
+      useHttp: true
+      wsRetryInterval: 5000
+      messageCacheSize: 50000
+      forwardSource: "小花落的聊天记录"
+      forwardSummary: "小花落整理的消息"
+```
+
+`wsAddress` 必需；`useHttp=true` 时扩展 API 使用 `httpAddress`，否则通过 WebSocket 回调。连接断开后按 `wsRetryInterval` 毫秒重试。消息 ID 映射缓存默认 50,000 条、写入后保留两天，用于撤回、表情回应等后续操作。
+
+## 权限和定时发送
+
+系统管理员列表映射为 `ADMINISTRATOR`；群主和群管理员映射为 `MANAGER`。Adapter 可查询群/好友列表，因此支持调度任务按目标 ID 选择 Bot，并支持 `sendAllGroup`。
+
+## 扩展 API
+
+```kotlin
+val nc = this.nc()
+nc.setMsgEmojiLike(receiveMessage.id, emojiId, true)
+
+val message = SendMessage.builder()
+    .nc { diceMessage() }
+    .build()
+sendReply(message)
+```
+
+扩展包含群/好友管理、请求审批、撤回、文件、合并转发、卡片、骰子、猜拳和平台表情等。调用前可用 `MessageMatch(adapterId = "NapCat")` 限制适配器，或为其他平台准备普通文本降级。
+
+<Callout type="warning">不要把 NapCat Token 放进仓库。若连接远程 NapCat，应使用 TLS 隧道、私网或反向代理，并限制 HTTP API 来源。</Callout>

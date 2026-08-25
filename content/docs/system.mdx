@@ -1,0 +1,32 @@
+---
+title: 核心概念
+description: 介绍小花落核心模块的公共能力。
+---
+
+# 核心概念
+
+`falowp-bot-system` 提供与平台无关的消息、插件与基础设施 API。业务插件通常只依赖它；适配器负责实现抽象发送方法。
+
+## 公共能力
+
+| 包 | 主要内容 |
+| --- | --- |
+| `api` | `BotApi`、`ReceiveMessage`、`SendMessage`、权限与类型枚举 |
+| `plugin.message` | 消息匹配、普通/队列消息注册器 |
+| `plugin.event` | 事件发布与订阅、帮助事件 |
+| `plugin.hook` | 前置、后置、异常、最终与环绕 Hook |
+| `plugin.task` | Cron、周期与启动后任务 |
+| `cache` / `json` / `expand` | 缓存、Jackson 3、图片与字符串工具 |
+| `web` | Ktor Client/Server、Playwright、HTML 截图 |
+
+## 三类扩展点
+
+- **命令**：用户消息驱动，使用 `message` 或 `queueMessage`。
+- **事件**：业务事实驱动，使用 `eventListener` 和 `publishEvent`。
+- **Hook**：修改既有执行链，使用 `beforeHook`、`aroundHook` 等。
+
+定时任务是独立入口，但仍拿到 `BotApi`；其 `receiveMessage` 为空，因此不能 `sendReply` 或 `self()`，必须指定目标。
+
+## 能力边界
+
+消息插件处理用户消息，事件在模块之间传递状态，Hook 修改执行链，定时任务从独立调度入口执行。四类能力共享 `BotApi`，但具有不同的消息上下文和发送限制。

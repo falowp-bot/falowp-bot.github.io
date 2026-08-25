@@ -1,0 +1,52 @@
+---
+title: 创建插件
+description: 介绍消息插件的创建、注册和测试。
+---
+
+# 创建插件
+
+## 创建命令
+
+```kotlin
+package com.example.bot.plugins.hello
+
+import com.blr19c.falowp.bot.system.plugin.Plugin
+import com.blr19c.falowp.bot.system.plugin.message.message
+
+@Plugin(name = "你好", tag = "基础", desc = "向机器人问好")
+class Hello {
+    private val hello = message(Regex("你好")) {
+        sendReply("你好，${receiveMessage.sender.nickname}！")
+    }
+
+    init { hello.register() }
+}
+```
+
+`message` 返回注册器而不是直接注册。调用 `register()` 后，消息处理器进入插件管理器。
+
+## `@Plugin` 字段
+
+| 字段 | 默认值 | 说明 |
+| --- | --- | --- |
+| `name` | 必填 | 帮助列表与识别名称 |
+| `desc` | `""` | 功能描述 |
+| `tag` | `"其他"` | 帮助页分组 |
+| `enable` | `true` | 是否启用；禁用插件不会执行 |
+| `hidden` | `false` | 是否从普通帮助列表隐藏 |
+
+## 正则参数
+
+框架使用完整匹配 `Regex.matches`，所以 `Regex("回显\\s+(.+)")` 能匹配“回显 hello”，而不能匹配前后还有其他文本的消息。捕获组按顺序传给数组解构：
+
+```kotlin
+private val add = message(Regex("相加\\s+(\\d+)\\s+(\\d+)")) { (a, b) ->
+    sendReply("结果：${a.toInt() + b.toInt()}")
+}
+```
+
+## `BotApi` 上下文
+
+处理块的接收者是 `BotApi`，可直接使用 `receiveMessage`、`sendReply`、`sendGroup`、`sendPrivate`、`sendAllGroup`、`self()` 和 `publishEvent()`。
+
+<Callout type="success">能够响应命令后，继续阅读消息匹配和发送消息；先掌握这两章再引入 Hook，调试会简单很多。</Callout>

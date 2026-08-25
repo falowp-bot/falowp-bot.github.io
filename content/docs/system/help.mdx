@@ -1,0 +1,31 @@
+---
+title: 帮助系统
+description: 介绍 HelpEvent、插件列表和帮助图片。
+---
+
+# 帮助系统
+
+System 会为全部插件注册 `HelpEvent` 监听器，并使用内置 HTML 模板与 Playwright 生成帮助图片。
+
+## 添加帮助命令
+
+```kotlin
+@Plugin(name = "帮助", hidden = true)
+class Help {
+    private val all = message(MessageMatch(Regex("帮助"), atMe = true)) {
+        publishEvent(HelpEvent(receiveMessage.source, receiveMessage.sender))
+    }
+
+    private val one = message(MessageMatch(Regex("帮助\\s?(.+)"), atMe = true)) { (name) ->
+        publishEvent(HelpEvent(receiveMessage.source, receiveMessage.sender, pluginName = name.trim()))
+    }
+
+    init { all.register(); one.register() }
+}
+```
+
+全部帮助按 `@Plugin.tag` 分组；单项帮助显示名称与描述。`hidden` 默认不展示，`enable=false` 的插件由 `showDisable` 决定，管理场景可用 `showHidden=true`。
+
+`HelpEventHook` 的 `pluginInfo` 可变，能在生成前按群、用户或授权情况过滤插件。WebServer 还注册了 `POST /plugins` 返回非隐藏插件的简要信息。
+
+<Callout>帮助图片依赖 Chromium。容器环境需要预装 Playwright 浏览器及字体，否则 HTML 转图可能在启动或首次请求时失败。</Callout>

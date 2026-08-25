@@ -1,0 +1,51 @@
+---
+title: 事件
+description: 介绍系统事件、业务事件与事件通信。
+---
+
+# 事件
+
+## 订阅内置事件
+
+```kotlin
+private val welcome = eventListener<GroupIncreaseEvent> { event ->
+    val message = SendMessage.builder()
+        .at(event.user.id).text(" 欢迎加入！")
+        .build()
+    sendGroup(message, sourceId = event.source.id)
+}
+
+init { welcome.register() }
+```
+
+| 事件 | 关键字段 |
+| --- | --- |
+| `NudgeEvent` | `actor`、`target`、`action`；`nudgeMe` 只处理目标为机器人 |
+| `GroupIncreaseEvent` / `GroupDecreaseEvent` | `source`、`actor`、`user`、`type` |
+| `RequestJoinGroupEvent` / `RequestAddFriendEvent` | `comment`、`flag`、申请人 |
+| `WithdrawMessageEvent` | 被撤回的 `receiveMessage` |
+| `GreetingEvent` | `goodMorning`、`goodNight` |
+| `SendMessageEvent` | 消息链、`reference`、`forward` |
+| `HelpEvent` | 来源、触发人、可见性与插件名 |
+
+适配器只会发布自己能获得的平台事件；编写跨平台插件时不要假设每个事件都有实现。
+
+## 自定义事件
+
+```kotlin
+data class BuildFinishedEvent(
+    val version: String,
+    val success: Boolean,
+) : Plugin.Listener.Event {
+    override val source = ReceiveMessage.Source.system()
+    override val actor = ReceiveMessage.User.empty()
+}
+
+// 发布
+publishEvent(BuildFinishedEvent("1.2.0", true))
+
+// 订阅
+private val build = eventListener<BuildFinishedEvent> { event -> /* ... */ }
+```
+
+事件监听器异步执行，发布者不等待所有监听者完成。HTTP 路由、消息插件和定时任务都可以通过 `publishEvent()` 发布同一种业务事件。

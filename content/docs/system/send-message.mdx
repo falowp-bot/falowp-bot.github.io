@@ -1,0 +1,49 @@
+---
+title: 发送消息
+description: 介绍 SendMessage、消息链、引用与合并转发。
+---
+
+# 发送消息
+
+## 构建消息链
+
+```kotlin
+val chain = SendMessage.builder()
+    .at(receiveMessage)
+    .text("你好\n")
+    .image("https://example.com/image.png")
+    .emoji("123", "face", "[表情]")
+    .build()
+
+sendReply(chain, reference = true)
+```
+
+Builder 支持 `text`、`at`、`image`、`voice(URI)`、`video(URI)`、`nudge`、`emoji`。每次 `build()` 得到带唯一 ID 的 `SendMessageChain`。
+
+## 发送方法
+
+| 方法 | 目标 | 注意 |
+| --- | --- | --- |
+| `sendReply` | 当前消息来源 | 自动选择群或私聊 |
+| `sendGroup` | 指定群 ID | 定时任务常用 |
+| `sendPrivate` | 指定用户 ID | 平台可能限制主动私聊 |
+| `sendAllGroup` | 适配器可见的所有群 | 谨慎使用，可能触发限流 |
+
+`reference=true` 请求引用原消息；`forward=true` 请求合并转发。平台能力不同：NapCat 对多层合并转发和平台扩展支持最完整，QQ 官方和 Telegram 可能降级或不支持某些消息类型。
+
+## 多条链与平台扩展
+
+```kotlin
+sendReply(first, second, forward = true)
+
+val ncMessage = SendMessage.builder()
+    .text("投一个骰子：")
+    .nc { diceMessage() }
+    .build()
+```
+
+业务插件若只用统一消息类型，就能跨适配器运行；`.nc {}`、`botApi.nc()` 等扩展应集中封装并提供降级路径。
+
+## 发送 Hook 和事件
+
+插件调用发送方法时，`PluginBotApi` 先触发 `SendMessageHook`，允许修改或终止发送，再委托适配器，并按消息链 ID 去重发布 `SendMessageEvent`。需要敏感词过滤、统一页脚或统计时，优先使用 Hook，而不是修改每个命令。

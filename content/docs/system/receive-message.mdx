@@ -1,0 +1,40 @@
+---
+title: 接收消息
+description: 介绍 ReceiveMessage 的消息、用户和来源字段。
+---
+
+# 接收消息
+
+`BotApi.receiveMessage` 是适配器统一后的输入。
+
+## 顶层字段
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `String` | 统一消息 ID；适配器可维护原始 ID 映射 |
+| `messageType` | `MessageTypeEnum` | 主消息类型 |
+| `content` | `Content` | 文本与富媒体内容 |
+| `sender` | `User` | 发送者、权限、头像 |
+| `source` | `Source` | 群/私聊/系统来源及 ID |
+| `self` | `BotSelf` | 当前机器人信息 |
+| `adapter` | `Adapter` | 适配器 ID 与原始挂载数据 |
+
+快捷判断：`group()`、`private()`、`atMe()`。
+
+## `Content`
+
+常用字段为 `message`、`voice`、`at`、`image`、`emoji`、`video`、`share`、`file` 与挂起函数 `reference()`。`image` 使用 `ImageUrl`，可把 HTTP URL、文件 URI 或 Base64 统一转换为字节、Base64、HTML Data URL、`BufferedImage` 或文件。
+
+```kotlin
+private val inspect = message(MessageMatch.allMatch(), terminateEvent = false) {
+    val m = receiveMessage
+    log().info("adapter={}, source={}, sender={}, images={}",
+        m.adapter.id, m.source.id, m.sender.id, m.content.image.size)
+}
+```
+
+## 原始平台对象
+
+`adapter.mounted` 可保留平台原始对象，适合高级扩展，但会造成平台耦合。优先使用统一字段；只有统一模型无法表达时才转为适配器 API，例如 NapCat 的 `nc()` 扩展。
+
+<Callout type="warning">事件任务的 `BotApi` 可能由空消息构造。不要在定时任务里依赖 `receiveMessage.sender` 或调用 `sendReply`。</Callout>

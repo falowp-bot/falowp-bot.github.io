@@ -1,0 +1,28 @@
+---
+title: MinIO
+description: 介绍图片上传、文件上传和 ImageUrl URL 转换。
+---
+
+# MinIO
+
+```yaml
+bot:
+  plugin:
+    minio:
+      registerImageUrl: "true"
+      url: "https://objects.example.com"
+      bucket: "falowp-bot"
+      accessKey: "FROM_SECRET"
+      secretKey: "FROM_SECRET"
+```
+
+```kotlin
+val imageUrl = MinIO.uploadImage(image, "temporary/${UUID.randomUUID()}.png")
+val fileUrl = MinIO.uploadFile(file, "exports/report.pdf")
+```
+
+`registerImageUrl=true` 时，MinIO 会把上传函数注册给 System 的 `ImageUrl.toUrl()`，解决某些平台只接受 HTTP 图片地址而不接受 Base64 的问题。
+
+对象路径会直接拼到 `url/bucket/path`。Bucket 需要预先存在并具备写权限；若要让平台下载，对象或网关必须可读。临时图片应配置生命周期清理，永久对象应使用不可碰撞、不可遍历的路径。
+
+<Callout>Bucket 配置键为 `bucket`；`tempBucket` 和 `permanentBucket` 不属于当前配置结构。</Callout>

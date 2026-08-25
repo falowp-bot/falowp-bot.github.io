@@ -1,0 +1,34 @@
+---
+title: 官方插件
+description: 介绍官方功能模块及其依赖关系。
+---
+
+# 官方插件
+
+<Lead>每个功能以独立模块发布；模块自带的 `plugin-conf` 会把对应包加入插件扫描范围。</Lead>
+
+| 模块 | 功能 | 运行条件 |
+| --- | --- | --- |
+| `falowp-bot-plugin-user` | 用户资料、金币、好感度、排行 | 数据库配置、JDBC 驱动 |
+| `falowp-bot-plugin-auth` | 最低权限检查、封禁与解封 | 数据库配置、JDBC 驱动 |
+| `falowp-bot-plugin-ai` | 对话、上下文与工具调用 | 数据库配置、OpenAI 兼容配置 |
+| `falowp-bot-plugin-bili` | UP 动态、直播订阅、登录、视频摘要 | 数据库配置、权限插件 |
+| `falowp-bot-plugin-coin` | 打工、打劫 | 用户插件 |
+| `falowp-bot-plugin-signin` | 每日签到 | 用户插件 |
+| `falowp-bot-plugin-wordcloud` | 群词云 | 数据库配置、HanLP |
+| `falowp-bot-plugin-repeat` | 复读与戳一戳互动 | 无额外配置 |
+| `falowp-bot-plugin-idle` | 每日摸鱼提醒 | 网络日历 |
+| `falowp-bot-plugin-kfc` | 周四文案 | 无额外配置 |
+
+## 引入示例
+
+```kotlin
+val falowpVersion: String = project.property("falowpVersion").toString()
+dependencies {
+    implementation("com.blr19c.falowp:falowp-bot-plugin-user:$falowpVersion")
+    implementation("com.blr19c.falowp:falowp-bot-plugin-auth:$falowpVersion")
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:DRIVER_VERSION")
+}
+```
+
+用户与权限模块的职责、依赖关系和 API 见[用户与权限](/docs/plugins/user-auth)，数据源配置见[数据库](/docs/utilities/database)。包含数据库表的模块会在初始化时通过 Exposed 创建自己的表。

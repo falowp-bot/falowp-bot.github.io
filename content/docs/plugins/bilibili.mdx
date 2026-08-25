@@ -1,0 +1,35 @@
+---
+title: Bilibili 订阅
+description: 介绍动态、直播、视频摘要和 Bilibili API。
+---
+
+# Bilibili 订阅
+
+<Lead>`falowp-bot-plugin-bili` 提供 UP 主动态、直播状态、登录态和视频摘要功能。</Lead>
+
+## 添加依赖
+
+```kotlin
+dependencies {
+    implementation("com.blr19c.falowp:falowp-bot-plugin-bili:$falowpVersion")
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:DRIVER_VERSION")
+}
+```
+
+模块包含数据库和权限运行依赖。Cookie、订阅与动态状态通过数据库保存，因此还需要完成[数据库配置](/docs/utilities/database)。
+
+## 命令
+
+| 命令 | 权限 | 用途 |
+| --- | --- | --- |
+| `B站订阅 <mid>` | `MANAGER` | 为当前来源订阅 UP |
+| `删除B站订阅 <mid>` | `MANAGER` | 删除订阅 |
+| `查看B站订阅` | 普通成员 | 查看当前来源订阅 |
+| `B站登录` | `ADMINISTRATOR` | 扫码保存 Cookie |
+| BV/AV视频摘要命令 | 普通成员 | 获取视频 AI 摘要 |
+
+插件每分钟轮询动态和直播状态，每天刷新用户信息。首次直播会发布 `BiliLiveStartEvent`，结束发布 `BiliLiveEndEvent`，新动态发布 `BiliDynamicEvent`。其他插件可以订阅这些事件。
+
+## API 复用
+
+`BiliClient` 公开用户信息、动态、视频、直播房间、弹幕连接和发送直播消息等扩展。Cookie 使用数据库存储。调用频率、登录态和 Bilibili 风控都可能变化，生产中要记录返回码、退避重试，并避免高频轮询。

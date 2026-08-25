@@ -1,0 +1,50 @@
+---
+title: Hook
+description: 介绍消息、事件、任务和发送流程中的 Hook。
+---
+
+# Hook
+
+Hook 是可修改执行链的高级能力。内置 Hook 包括 `ReceiveMessageHook`、`SendMessageHook`、`MessagePluginExecutionHook`、`EventPluginExecutionHook`、`TaskPluginExecutionHook` 与 `HelpEventHook`。
+
+## 五种类型
+
+| API | 时机 | 是否需要 `process()` |
+| --- | --- | --- |
+| `beforeHook` | 目标前 | 普通实现会自动继续 |
+| `afterReturningHook` | 正常完成后 | 否 |
+| `afterThrowingHook` | 抛错时 | 否，异常会继续抛出 |
+| `afterFinallyHook` | 无论结果 | 否 |
+| `aroundHook` | 包裹目标 | **必须手动调用**，否则目标不执行 |
+
+```kotlin
+private val timing = aroundHook<MessagePluginExecutionHook> { hook ->
+    val start = System.currentTimeMillis()
+    try { process() }
+    finally { log().info("{}ms: {}", System.currentTimeMillis() - start, hook.register.plugin.name) }
+}
+```
+
+`terminate()` 停止后续 Hook 和目标；`botApi()` 返回当前位置正确的 API；`pluginInfo()` 返回目标插件信息。Hook 的 `order` 升序执行，可用 `HookPluginRegisterMatch` 按 `PluginInfo` 过滤。
+
+## 修改发送消息
+
+```kotlin
+private val footer = sendMessageHook { messages ->
+    messages + SendMessage.builder("\n— 小花落").build().messageList
+}
+```
+
+## 等待下一条回复
+
+```kotlin
+val answer = withTimeoutOrNull(30.seconds) {
+    awaitReply(MessageMatch(regex = Regex("确认|取消"))) { args ->
+        receiveMessage.content.message
+    }
+} ?: "超时"
+```
+
+`awaitReply` 用运行时 `ReceiveMessageHook` 实现，会在第一次匹配后自动注销。应始终设置超时，并用更严格的 `sendId`、`sourceType` 或自定义条件限制会话，避免接走别人的消息。
+
+<Callout type="warning">Hook 内要使用 `this.botApi()`，不要捕获注册 Hook 时的外部 `BotApi`。Around Hook 漏掉 `process()` 会静默阻断整个功能。</Callout>

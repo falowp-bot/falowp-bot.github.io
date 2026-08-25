@@ -1,0 +1,30 @@
+---
+title: Webdriver 与 HTML 转图
+description: 介绍 Playwright 页面访问、截图与 HTML 转图。
+---
+
+# Webdriver 与 HTML 转图
+
+```kotlin
+val title = withContext(Dispatchers.IO) {
+    commonWebdriverContextPage {
+        navigate("https://example.com")
+        title()
+    }
+}
+
+val image = htmlToImageBase64(
+    "<main class='card'><h1>构建成功</h1></main>",
+    ".card"
+)
+```
+
+`commonWebdriverContext` 创建 Chromium 与高分辨率 Context；`commonWebdriverContextPage` 再创建 Page。传入现有 Context/Page 时函数会在结束后关闭它，因此只有在明确转移生命周期时才复用。
+
+`htmlToImageBase64` 设置 HTML、等待 `NETWORKIDLE`，截取指定元素并返回裸 Base64。可直接传给 `SendMessage.builder().image(...)`。
+
+## 辅助方法
+
+`Page.existsToExecute(selector, onlyOne)` 只在元素存在时执行块。`defaultLaunchOptions()` 与 `defaultNewContextOptions()` 可作为定制浏览器的基础。
+
+<Callout type="warning">网页内容不可信。不要把用户输入直接拼进带脚本的 HTML；应转义文本、限制 URL 协议，并给导航与截图设置外层超时。</Callout>

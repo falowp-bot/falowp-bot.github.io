@@ -1,0 +1,59 @@
+---
+title: 配置文件
+description: 介绍 application.yaml 的配置结构与合并规则。
+---
+
+# 配置文件
+
+<Lead>所有配置从 `application.yaml` 与依赖中的 `plugin-conf/**/*.yaml` 合并而来。</Lead>
+
+## 系统配置
+
+```yaml
+bot:
+  system:
+    nickname: "小花落"
+    administrator: ["123456789"]
+    zoneOffset: "+8"
+    adapterPackage: []
+    pluginPackage: ["com.example.bot.plugins"]
+    greeting:
+      goodMorning: "0 0 7 * * ?"
+      goodNight: "0 0 1 * * ?"
+    web:
+      port: 8041
+      auth: "CHANGE_ME"
+```
+
+| 键 | 是否必需 | 用途 |
+| --- | --- | --- |
+| `nickname` | 是 | 自身昵称与部分推送文案 |
+| `administrator` | 否 | 跨平台超级管理员 ID 列表 |
+| `zoneOffset` | 否 | Cron 时区，默认 `+8` |
+| `pluginPackage` | 自有插件需要 | 插件扫描包列表 |
+| `greeting.*` | 否 | 早晚安事件与闲时窗口 |
+| `web.port` / `web.auth` | 是 | Ktor 监听端口与 Basic Auth 密码 |
+
+## 读取 API
+
+```kotlin
+val nickname = systemConfigProperty("nickname")
+val admins = systemConfigListProperty("administrator") { emptyList() }
+val useHttp = adapterConfigProperty("nc.useHttp") { "false" }.toBoolean()
+val prompt = pluginConfigProperty("systemPrompt")
+val blocked = pluginConfigListProperty("blockWords") { emptyList() }
+```
+
+通用方法还有 `configProperty`、`configListProperty`、`config`、`configList`。`*Property` 读取字符串；`*ListProperty` 读取字符串列表；`config` 返回 `JacksonYAMLValue`，可用 `getConfig`、`getListConfig`、`getStringOrNull` 与 `toMap()` 处理结构化配置。
+
+## 插件前缀如何确定
+
+`pluginConfigProperty("x")` 会按当前插件类推导 `bot.plugin.<插件包名>.x`。例如 `com.example.bot.plugins.weather.Weather` 对应 `bot.plugin.weather`。
+
+## 合并规则
+
+- 标量以先读取到的非空值为准，因此应用配置可覆盖依赖默认值。
+- 列表会合并并去重，所以多个模块可共同添加 `pluginPackage` 或 `adapterPackage`。
+- 结构化配置的 Map 在合并后读取。
+
+<Callout type="warning">当前 WebServer 的 Basic Auth 校验只比较密码，且用户名不参与判断。不要直接暴露到公网；请在反向代理层补充 TLS、来源限制和更完整的鉴权。</Callout>

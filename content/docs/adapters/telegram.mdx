@@ -1,0 +1,40 @@
+---
+title: Telegram
+description: 介绍 Telegram Token、代理、Long Polling 与数据库依赖。
+---
+
+# Telegram
+
+<Lead>`falowp-bot-adapter-tg` 通过 Long Polling 接入 Telegram 群聊与私聊。</Lead>
+
+## 添加依赖
+
+```kotlin
+dependencies {
+    implementation("com.blr19c.falowp:falowp-bot-adapter-tg:$falowpVersion")
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:DRIVER_VERSION")
+}
+```
+
+适配器通过数据库保存 Telegram 用户 ID 与用户名的映射，因此还需要完成[数据库配置](/docs/utilities/database)。
+
+## 配置
+
+```yaml
+bot:
+  adapter:
+    tg:
+      token: "YOUR_BOT_TOKEN"
+      proxyUrl: "http://127.0.0.1:7890" # 可省略
+```
+
+Telegram 适配器会把 `bot.system.nickname` 同步为机器人名称。
+
+## 消息映射
+
+- `private` 映射为 `PRIVATE`，平台群类型映射为 `GROUP`。
+- 文本中的机器人用户名 AT 会被移除，AT 用户进入 `content.at`。
+- 图片、语音和视频会生成 Telegram 文件 URL；超过 20 MiB 的文件不会下载。
+- 系统管理员为 `ADMINISTRATOR`；Telegram creator/administrator 为 `MANAGER`。
+
+配置 HTTP 代理时使用完整 URI，适配器读取主机和端口并设置 `DefaultBotOptions.ProxyType.HTTP`。

@@ -1,0 +1,98 @@
+---
+title: 安装与启动
+description: 介绍小花落项目的依赖、入口和启动配置。
+---
+
+# 安装与启动
+
+<Lead>准备 JDK、Kotlin 和 Gradle，添加核心模块与平台适配器。</Lead>
+
+## 环境要求
+
+- JDK 25；Gradle Toolchain 会据此编译。
+- Gradle Wrapper。
+- 至少一个平台适配器。
+- 若启用 Webdriver/帮助图片，运行环境需要能安装或启动 Playwright Chromium。
+
+## `build.gradle.kts`
+
+```kotlin
+plugins {
+    kotlin("jvm") version "2.4.0"
+    id("io.ktor.plugin") version "3.5.2"
+}
+
+group = "com.example.bot"
+version = "1.0.0"
+
+val falowpVersion: String = project.property("falowpVersion").toString()
+
+kotlin { jvmToolchain(25) }
+application { mainClass.set("com.example.bot.ApplicationKt") }
+
+repositories {
+    mavenCentral()
+    mavenLocal() // 仅当你在本机发布了源码快照时需要
+}
+
+dependencies {
+    implementation("com.blr19c.falowp:falowp-bot-system:$falowpVersion")
+    implementation("com.blr19c.falowp:falowp-bot-adapter-nc:$falowpVersion")
+}
+```
+
+在项目根目录的 `gradle.properties` 中统一标记模块版本：
+
+```properties
+falowpVersion=VERSION
+```
+
+<Callout>核心、适配器、插件和服务组件读取同一个 `falowpVersion`。</Callout>
+
+## 入口和目录
+
+```text
+src/main/kotlin/com/example/bot/Application.kt
+src/main/kotlin/com/example/bot/plugins/echo/Echo.kt
+src/main/resources/application.yaml
+src/main/resources/logback.xml
+```
+
+```kotlin
+package com.example.bot
+
+import com.blr19c.falowp.bot.system.start
+
+fun main() = start()
+```
+
+## 最小配置
+
+```yaml
+bot:
+  system:
+    web:
+      port: 8041
+      auth: "replace-with-a-strong-password"
+    nickname: "小花落"
+    administrator: ["YOUR_QQ_ID"]
+    zoneOffset: "+8"
+    pluginPackage:
+      - "com.example.bot.plugins"
+  adapter:
+    nc:
+      wsAddress: "ws://127.0.0.1:8060?access_token=YOUR_TOKEN"
+      httpAddress: "http://127.0.0.1:8060?access_token=YOUR_TOKEN"
+      useHttp: true
+      wsRetryInterval: 5000
+```
+
+`falowp-bot-adapter-nc` 自带 `plugin-conf`，会自动把自己的包加入 `adapterPackage`。应用插件仍需配置 `pluginPackage`，而且包路径必须以 `.plugins` 结尾或位于它的子包中。
+
+## 启动
+
+```bash
+./gradlew run
+```
+
+启动顺序为资源配置 → Webdriver → WebClient → 插件管理 → 调度器 → 适配器 → WebServer。WebServer 使用 `start(wait = true)` 持续运行；看到适配器完成加载后即可发送测试命令。

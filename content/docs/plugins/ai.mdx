@@ -1,0 +1,57 @@
+---
+title: AI 对话与工具
+description: 介绍 AI 对话、上下文窗口和工具注册。
+---
+
+# AI 对话与工具
+
+<Lead>`falowp-bot-plugin-ai` 提供被 AT 后的对话、上下文记录和工具调用。</Lead>
+
+## 添加依赖
+
+```kotlin
+dependencies {
+    implementation("com.blr19c.falowp:falowp-bot-plugin-ai:$falowpVersion")
+    runtimeOnly("org.mariadb.jdbc:mariadb-java-client:DRIVER_VERSION")
+}
+```
+
+对话历史通过数据库组件保存，因此还需要完成[数据库配置](/docs/utilities/database)。
+
+## 配置
+
+```yaml
+bot:
+  plugin:
+    ai:
+      apiKey: "YOUR_API_KEY"
+      baseUrl: "https://api.openai.com"
+      model: "YOUR_MODEL"
+      systemPrompt: "你是名为小花落的机器人助手。"
+      temperature: "0.7"
+      maxIterations: "10"
+      contextMaxTurns: "10"
+      contextMaxMessageChars: "800"
+```
+
+`baseUrl` 默认 OpenAI 地址；`maxIterations` 默认 10；上下文默认 10 轮、每条截断到 800 字符。插件在机器人被 AT 时以 `Int.MAX_VALUE` 顺序兜底匹配，并通过队列串行处理该能力的请求。
+
+## 注册 AI 工具
+
+```kotlin
+@PluginUtils
+object WeatherAiTool {
+    init {
+        AiToolUtils.registerSimpleTool(
+            name = "weather",
+            description = "查询城市天气",
+        ) { args -> queryWeather(args.input) }
+    }
+}
+```
+
+工具名只能包含字母、数字、`_`、`-`，长度 1–64。默认不允许覆盖同名工具；需要替换时传 `replace=true`。复杂工具可用 `registerToolFactory`，工厂会为当前会话得到带 `botApi` 的 `AiToolContext`。
+
+## 调用限制
+
+限制上下文与迭代次数，给外部工具增加超时、参数校验和权限检查；不要让模型直接拼 SQL、文件路径或平台管理操作。API Key 使用部署密钥，不写入 YAML 样例仓库。
