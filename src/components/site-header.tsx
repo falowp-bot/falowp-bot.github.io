@@ -4,7 +4,7 @@ import { Separator } from "@heroui/react/separator";
 import { Surface } from "@heroui/react/surface";
 import { Toolbar } from "@heroui/react/toolbar";
 import { buttonVariants } from "@heroui/styles";
-import { Sparkles } from "lucide-react";
+import { Sparkles, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
@@ -33,6 +33,7 @@ export function SiteHeader() {
         <div className="header-actions">
           <DocsSearch />
           <Separator className="header-separator" orientation="vertical" />
+          <a className={`${buttonVariants({ variant: "ghost", size: "sm" })} qq-group-link`} href="https://qm.qq.com/q/xmuDQGfmSI" target="_blank" rel="noreferrer" aria-label="加入QQ群 花花又落落（1101172154）" title="加入QQ群：花花又落落（1101172154）"><UsersRound className="size-4" /><span>QQ群</span></a>
           <a className={buttonVariants({ variant: "ghost", size: "sm", isIconOnly: true })} href="https://github.com/falowp-bot" target="_blank" rel="noreferrer" aria-label="打开 GitHub 项目"><GitHubIcon className="size-4" /></a>
           <ThemeToggle />
         </div>
